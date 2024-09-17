@@ -22,7 +22,6 @@ namespace PointShop.Points
         public string PatternName { get; set; }
 
         //Declare your other properties here
-        public string Title { get; set; }
         public string Items { get; set; }
         [Ignore] public List<int> LItems { get; set; }
         public string BizAllowed { get; set; }
@@ -49,7 +48,6 @@ namespace PointShop.Points
             PatternName = result.PatternName;
 
             //Add your other properties here
-            Title = result.Title;
             Items = result.Items;
             LItems = ListConverter.ReadJson(Items);
             BizAllowed = result.BizAllowed;
@@ -72,7 +70,7 @@ namespace PointShop.Points
             var query = await PointShop_Item.QueryAll();
             List<PointShop_Item> items = query.Where(i => LItems.Contains(i.Id)).ToList();
 
-            Panel panel = Context.PanelHelper.Create($"{Title}", UIPanel.PanelType.TabPrice, player, () => PointShopPanel(player));
+            Panel panel = Context.PanelHelper.Create($"{PatternName}", UIPanel.PanelType.TabPrice, player, () => PointShopPanel(player));
 
             foreach (var item in items)
             {
@@ -104,16 +102,19 @@ namespace PointShop.Points
             }
 
 
-            panel.NextButton("Historique", async () =>
+            if(LBizAllowed.Count > 0)
             {
-                if (player.HasBiz())
+                panel.NextButton("Historique", async () =>
                 {
-                    var permissions = await PermissionUtils.GetPlayerPermission(player);
-                    if (player.biz.OwnerId == player.character.Id || (permissions.hasRemoveMoneyPermission && permissions.hasAddMoneyPermission)) PointShopLogsPanel(player);
-                    else player.Notify("PointShop", "Vous ne disposez pas des droits sur le compte bancaire d'entreprise", Life.NotificationManager.Type.Warning);
-                }
-                else player.Notify("PointShop", "Vous devez être propriétaire ou avoir les droits sur le compte en banque de votre société", Life.NotificationManager.Type.Warning);
-            });
+                    if (player.HasBiz())
+                    {
+                        var permissions = await PermissionUtils.GetPlayerPermission(player);
+                        if (player.biz.OwnerId == player.character.Id || (permissions.hasRemoveMoneyPermission && permissions.hasAddMoneyPermission)) PointShopLogsPanel(player);
+                        else player.Notify("PointShop", "Vous ne disposez pas des droits sur le compte bancaire d'entreprise", Life.NotificationManager.Type.Warning);
+                    }
+                    else player.Notify("PointShop", "Vous devez être propriétaire ou avoir les droits sur le compte en banque de votre société", Life.NotificationManager.Type.Warning);
+                });
+            }
             if(player.IsAdmin && player.serviceAdmin) panel.NextButton("Admin", () => PointShopAdminPanel(player));
             panel.CloseButton();
 
@@ -125,7 +126,7 @@ namespace PointShop.Points
             List<PointShop_Logs> logs = query.Where(l => l.ShopId == Id && l.BizId == player.character.BizId).ToList();
             logs.Reverse();
 
-            Panel panel = Context.PanelHelper.Create($"{Title} - Historique", UIPanel.PanelType.TabPrice, player, () => PointShopLogsPanel(player));
+            Panel panel = Context.PanelHelper.Create($"{PatternName} - Historique", UIPanel.PanelType.TabPrice, player, () => PointShopLogsPanel(player));
 
             foreach (var log in logs)
             {
@@ -146,7 +147,7 @@ namespace PointShop.Points
             var query = await PointShop_Item.QueryAll();
             List<PointShop_Item> items = query.Where(i => LItems.Contains(i.Id)).ToList();
 
-            Panel panel = Context.PanelHelper.Create($"{Title} - Modifier la boutique", UIPanel.PanelType.TabPrice, player, () => PointShopAdminPanel(player));
+            Panel panel = Context.PanelHelper.Create($"{PatternName} - Modifier la boutique", UIPanel.PanelType.TabPrice, player, () => PointShopAdminPanel(player));
 
             foreach (var item in items)
             {
@@ -163,7 +164,7 @@ namespace PointShop.Points
         }
         public void PointShopAddItemPanel(Player player)
         {
-            Panel panel = Context.PanelHelper.Create($"{Title} - Ajouter un article", UIPanel.PanelType.Input, player, () => PointShopAddItemPanel(player));
+            Panel panel = Context.PanelHelper.Create($"{PatternName} - Ajouter un article", UIPanel.PanelType.Input, player, () => PointShopAddItemPanel(player));
 
             panel.TextLines.Add("Renseigner l'ID");
             panel.inputPlaceholder = "exemple: 5";
@@ -206,13 +207,14 @@ namespace PointShop.Points
                 }
             });
 
+            panel.PreviousButton();
             panel.CloseButton();
 
             panel.Display();
         }
         public void PointShopBuyPanel(Player player, PointShop_Item item)
         {
-            Panel panel = Context.PanelHelper.Create($"{Title} - Achat", UIPanel.PanelType.Input, player, () => PointShopBuyPanel(player, item));
+            Panel panel = Context.PanelHelper.Create($"{PatternName} - Achat", UIPanel.PanelType.Input, player, () => PointShopBuyPanel(player, item));
 
             panel.TextLines.Add("Renseigner la quantité");
 
@@ -226,7 +228,7 @@ namespace PointShop.Points
                         {
                             if (player.setup.inventory.AddItem(item.ItemId, quantity, null))
                             {
-                                player.AddMoney(-total, $"PointShop - {Title}");
+                                player.AddMoney(-total, $"PointShop - {PatternName}");
                                 var currentItem = ItemUtils.GetItemById(item.ItemId);
                                 player.Notify("Achat", $"Vous venez d'acheter {quantity} {currentItem.itemName} pour {quantity * item.Price}€", NotificationManager.Type.Success);
 
@@ -274,7 +276,7 @@ namespace PointShop.Points
         }
         public void PointShopSellPanel(Player player, PointShop_Item item)
         {
-            Panel panel = Context.PanelHelper.Create($"{Title} - Vendre", UIPanel.PanelType.Input, player, () => PointShopSellPanel(player, item));
+            Panel panel = Context.PanelHelper.Create($"{PatternName} - Vendre", UIPanel.PanelType.Input, player, () => PointShopSellPanel(player, item));
 
             panel.TextLines.Add("Renseigner la quantité");
 
@@ -288,7 +290,7 @@ namespace PointShop.Points
                         if (InventoryUtils.CheckInventoryContainsItem(player, item.ItemId, quantity))
                         {
                             InventoryUtils.RemoveFromInventory(player, item.ItemId, quantity);
-                            player.AddMoney(total, $"PointShop - {Title}");
+                            player.AddMoney(total, $"PointShop - {PatternName}");
                             var currentItem = ItemUtils.GetItemById(item.ItemId);
                             player.Notify("Achat", $"Vous venez de vendre {quantity} {currentItem.itemName} pour {quantity * item.Price}€", NotificationManager.Type.Success);
 
@@ -333,7 +335,7 @@ namespace PointShop.Points
         public void PointShopAdminItemPanel(Player player, PointShop_Item item)
         {
             var currentItem = ItemUtils.GetItemById(item.ItemId);
-            Panel panel = Context.PanelHelper.Create($"{Title} - Modifier un article", UIPanel.PanelType.TabPrice, player, () => PointShopAdminItemPanel(player, item));
+            Panel panel = Context.PanelHelper.Create($"{PatternName} - Modifier un article", UIPanel.PanelType.TabPrice, player, () => PointShopAdminItemPanel(player, item));
 
             panel.AddTabLine($"{mk.Color("Objet:", mk.Colors.Info)} {currentItem.itemName}", "", ItemUtils.GetIconIdByItemId(item.ItemId), _ =>
             {
@@ -382,7 +384,7 @@ namespace PointShop.Points
         }
         public void PointShopItemPricePanel(Player player, PointShop_Item item)
         {
-            Panel panel = Context.PanelHelper.Create($"{Title} - Modifier le prix", UIPanel.PanelType.Input, player, () => PointShopItemPricePanel(player, item));
+            Panel panel = Context.PanelHelper.Create($"{PatternName} - Modifier le prix", UIPanel.PanelType.Input, player, () => PointShopItemPricePanel(player, item));
 
             panel.TextLines.Add("Définir le prix");
             panel.inputPlaceholder = "exemple: 1.50";
@@ -409,7 +411,7 @@ namespace PointShop.Points
                     return false;
                 }
             });
-
+            panel.PreviousButton();
             panel.CloseButton();
 
             panel.Display();
@@ -443,9 +445,6 @@ namespace PointShop.Points
             panel.AddTabLine($"{mk.Color("Nom:", mk.Colors.Info)} {pattern.PatternName}", _ => {
                 pattern.SetName(player, true);
             });
-            panel.AddTabLine($"{mk.Color("Titre:", mk.Colors.Info)} {pattern.Title}", _ => {
-                pattern.SetTitle(player, true);
-            });
             panel.AddTabLine($"{mk.Color("Sociétés autorisées:", mk.Colors.Info)} {pattern.LBizAllowed.Count}", _ => {
                 pattern.SetBizAllowed(player, true);
             });
@@ -466,7 +465,7 @@ namespace PointShop.Points
         {
             Panel panel = Context.PanelHelper.Create($"{(!isEditing ? "Créer" : "Modifier")} un modèle de {TypeName}", UIPanel.PanelType.Input, player, () => SetName(player));
 
-            panel.TextLines.Add("Donner un nom à votre modèle");
+            panel.TextLines.Add("Donner un nom à votre boutique");
             panel.inputPlaceholder = "3 caractères minimum";
 
             if (!isEditing)
@@ -476,61 +475,6 @@ namespace PointShop.Points
                     if (panel.inputText.Length >= 3)
                     {
                         PatternName = panel.inputText;
-                        SetTitle(player, false);
-
-                        //function to call for the following property
-                        // If you want to generate your point
-                        /*await Save();
-                        ConfirmGeneratePoint(player, this);*/
-                    }
-                    else
-                    {
-                        player.Notify("Attention", "Vous devez donner un nom à votre modèle (3 caractères minimum)", Life.NotificationManager.Type.Warning);
-                        panel.Refresh();
-                    }
-                });
-            }
-            else
-            {
-                panel.PreviousButtonWithAction("Confirmer", async () =>
-                {
-                    if (panel.inputText.Length >= 3)
-                    {
-                        PatternName = panel.inputText;
-                        if (await Save()) return true;
-                        else
-                        {
-                            player.Notify("Erreur", "échec lors de la sauvegarde de vos changements", Life.NotificationManager.Type.Error);
-                            return false;
-                        }
-                    }
-                    else
-                    {
-                        player.Notify("Attention", "Vous devez donner un nom à votre modèle (3 caractères minimum)", Life.NotificationManager.Type.Warning);
-                        return false;
-                    }
-                });
-            }
-            panel.PreviousButton();
-            panel.CloseButton();
-
-            panel.Display();
-        }
-        public void SetTitle(Player player, bool isEditing = false)
-        {
-            Panel panel = Context.PanelHelper.Create($"{(!isEditing ? "Créer" : "Modifier")} un modèle de {TypeName}", UIPanel.PanelType.Input, player, () =>
-            SetName(player));
-
-            panel.TextLines.Add("Donner un titre à votre boutique");
-            panel.inputPlaceholder = "3 caractères minimum";
-
-            if (!isEditing)
-            {
-                panel.NextButton("Suivant", () =>
-                {
-                    if (panel.inputText.Length >= 3)
-                    {
-                        Title = panel.inputText;
                         LItems = new List<int>();
                         Items = JsonConvert.SerializeObject(LItems);
                         LBizAllowed = new List<int>();
@@ -549,7 +493,7 @@ namespace PointShop.Points
                 {
                     if (panel.inputText.Length >= 3)
                     {
-                        Title = panel.inputText;
+                        PatternName = panel.inputText;
                         if (await Save()) return true;
                         else
                         {
@@ -569,6 +513,7 @@ namespace PointShop.Points
 
             panel.Display();
         }
+
         public void SetBizAllowed(Player player, bool isEditing = false)
         {
             Panel panel = Context.PanelHelper.Create($"{(!isEditing ? "Créer" : "Modifier")} un modèle de {TypeName}", UIPanel.PanelType.TabPrice, player, () => SetBizAllowed(player));
