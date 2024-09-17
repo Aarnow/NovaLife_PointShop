@@ -11,6 +11,7 @@ using Life;
 using PointShop.Entities;
 using ModKit.Utils;
 using Newtonsoft.Json;
+using System;
 
 namespace PointShop.Points
 {
@@ -83,8 +84,7 @@ namespace PointShop.Points
             {
                 panel.NextButton("Acheter", () =>
                 {
-                    var currentItem = ItemUtils.GetItemById(items[panel.selectedTab].ItemId);
-                    if (currentItem.buyable) PointShopBuyPanel(player, items[panel.selectedTab]);
+                    if (items[panel.selectedTab].IsBuyable) PointShopBuyPanel(player, items[panel.selectedTab]);
                     else
                     {
                         player.Notify("PointShop", "Cette objet n'est pas achetable", NotificationManager.Type.Info);
@@ -94,7 +94,7 @@ namespace PointShop.Points
                 panel.NextButton("Vendre", () =>
                 {
                     var currentItem = ItemUtils.GetItemById(items[panel.selectedTab].ItemId);
-                    if (currentItem.resellable) PointShopSellPanel(player, items[panel.selectedTab]);
+                    if (items[panel.selectedTab].IsResellable) PointShopSellPanel(player, items[panel.selectedTab]);
                     else
                     {
                         player.Notify("PointShop", "Cette objet n'est pas vendable", NotificationManager.Type.Info);
@@ -102,7 +102,41 @@ namespace PointShop.Points
                     }
                 });
             }
+
+
+            panel.NextButton("Historique", async () =>
+            {
+                if (player.HasBiz())
+                {
+                    var permissions = await PermissionUtils.GetPlayerPermission(player);
+                    if (player.biz.OwnerId == player.character.Id || (permissions.hasRemoveMoneyPermission && permissions.hasAddMoneyPermission)) PointShopLogsPanel(player);
+                    else player.Notify("DAB", "Vous ne disposez pas des droits sur le compte bancaire d'entreprise", Life.NotificationManager.Type.Warning);
+                }
+                else player.Notify("DAB", "Vous devez être propriétaire ou avoir les droits sur le compte en banque de votre société", Life.NotificationManager.Type.Warning);
+            });
             if(player.IsAdmin && player.serviceAdmin) panel.NextButton("Admin", () => PointShopAdminPanel(player));
+            panel.CloseButton();
+
+            panel.Display();
+        }
+        public async void PointShopLogsPanel(Player player)
+        {
+            var query = await PointShop_Logs.QueryAll();
+            List<PointShop_Logs> logs = query.Where(l => l.ShopId == Id && l.BizId == player.character.BizId).ToList();
+            logs.Reverse();
+
+            Panel panel = Context.PanelHelper.Create($"{Title} - Historique", UIPanel.PanelType.TabPrice, player, () => PointShopLogsPanel(player));
+
+            foreach (var log in logs)
+            {
+                var currentItem = ItemUtils.GetItemById(log.ItemId);
+                panel.AddTabLine($"{mk.Color($"{(log.IsPurchase ? "ACHAT" : "VENTE")}", (log.IsPurchase ? mk.Colors.Success : mk.Colors.Orange))} par {mk.Color(log.CharacterFullName, mk.Colors.Info)}<br>" +
+                    $"{mk.Size($"{currentItem.itemName} x {mk.Color($"{log.Quantity}", mk.Colors.Warning)}", 14)}",
+                    $"{DateUtils.ConvertNumericalDateToString(log.CreatedAt)}<br>{mk.Align($"{mk.Color($"{(log.IsPurchase ? "-" : "+")} {log.Price * log.Quantity}€", mk.Colors.Verbose)}", mk.Aligns.Center)}",
+                    ItemUtils.GetIconIdByItemId(currentItem.id), _ => {});
+            }
+
+            panel.PreviousButton();
             panel.CloseButton();
 
             panel.Display();
@@ -182,7 +216,7 @@ namespace PointShop.Points
 
             panel.TextLines.Add("Renseigner la quantité");
 
-            panel.PreviousButtonWithAction("Confirmer", () => {
+            panel.PreviousButtonWithAction("Confirmer", async () => {
                 if(int.TryParse(panel.inputText, out int quantity))
                 {
                     if(quantity > 0)
@@ -195,30 +229,43 @@ namespace PointShop.Points
                                 player.AddMoney(-total, $"PointShop - {Title}");
                                 var currentItem = ItemUtils.GetItemById(item.ItemId);
                                 player.Notify("Achat", $"Vous venez d'acheter {quantity} {currentItem.itemName} pour {quantity * item.Price}€", NotificationManager.Type.Success);
-                                return Task.FromResult(true);
+
+                                PointShop_Logs newLog = new PointShop_Logs();
+                                newLog.ShopId = Id;
+                                newLog.CharacterId = player.character.Id;
+                                newLog.CharacterFullName = player.GetFullName();
+                                newLog.ItemId = item.ItemId;
+                                newLog.BizId = player.character.BizId;
+                                newLog.Quantity = quantity;
+                                newLog.IsPurchase = true;
+                                newLog.Price = item.Price;
+                                newLog.CreatedAt = DateUtils.GetNumericalDateOfTheDay();
+                                await newLog.Save();
+
+                                return true;
                             }
                             else
                             {
                                 player.Notify("Achat", $"Vous n'avez pas suffisament d'espace dans votre inventaire", NotificationManager.Type.Warning);
-                                return Task.FromResult(false);
+                                return false;
                             }
                         }
                         else
                         {
                             player.Notify("Achat", $"Vous n'avez pas suffisament d'argent ({total}€)", NotificationManager.Type.Warning);
-                            return Task.FromResult(false);
+                            return false;
                         }
                     }
                     else
                     {
                         player.Notify("Achat", $"Quantité incorrect", NotificationManager.Type.Warning);
-                        return Task.FromResult(false);
+                        return false;
                     }
                 }
                 else
                 {
                     player.Notify("Achat", $"Format incorrect", NotificationManager.Type.Warning);
-                    return Task.FromResult(false);
+                    return false;
                 }
             });
             panel.CloseButton();
@@ -231,7 +278,7 @@ namespace PointShop.Points
 
             panel.TextLines.Add("Renseigner la quantité");
 
-            panel.PreviousButtonWithAction("Confirmer", () => {
+            panel.PreviousButtonWithAction("Confirmer", async () => {
                 if (int.TryParse(panel.inputText, out int quantity))
                 {
                     if (quantity > 0)
@@ -244,12 +291,25 @@ namespace PointShop.Points
                             player.AddMoney(total, $"PointShop - {Title}");
                             var currentItem = ItemUtils.GetItemById(item.ItemId);
                             player.Notify("Achat", $"Vous venez de vendre {quantity} {currentItem.itemName} pour {quantity * item.Price}€", NotificationManager.Type.Success);
-                            return Task.FromResult(true);
+
+                            PointShop_Logs newLog = new PointShop_Logs();
+                            newLog.ShopId = Id;
+                            newLog.CharacterId = player.character.Id;
+                            newLog.CharacterFullName = player.GetFullName();
+                            newLog.ItemId = item.ItemId;
+                            newLog.BizId = player.character.BizId;
+                            newLog.Quantity = quantity;
+                            newLog.IsPurchase = false;
+                            newLog.Price = item.Price;
+                            newLog.CreatedAt = DateUtils.GetNumericalDateOfTheDay();
+                            await newLog.Save();
+
+                            return true;
                         }
                         else
                         {
                             player.Notify("Achat", $"Vous n'avez pas suffisament d'espace dans votre inventaire", NotificationManager.Type.Warning);
-                            return Task.FromResult(false);
+                            return false;
                         }
                         
                         
@@ -257,13 +317,13 @@ namespace PointShop.Points
                     else
                     {
                         player.Notify("Achat", $"Quantité incorrect", NotificationManager.Type.Warning);
-                        return Task.FromResult(false);
+                        return false;
                     }
                 }
                 else
                 {
                     player.Notify("Achat", $"Format incorrect", NotificationManager.Type.Warning);
-                    return Task.FromResult(false);
+                    return false;
                 }
             });
             panel.CloseButton();
@@ -293,7 +353,7 @@ namespace PointShop.Points
             });
             panel.AddTabLine($"{mk.Color("Vendable:", mk.Colors.Info)} {(item.IsResellable ? "Oui" : "Non")}", "", ItemUtils.GetIconIdByItemId(item.ItemId), async _ =>
             {
-                item.IsBuyable = !item.IsBuyable;
+                item.IsResellable = !item.IsResellable;
                 if (await item.Save()) player.Notify("PointShop", "Modification enregistrée", NotificationManager.Type.Success);
                 else player.Notify("PointShop", "Nous n'avons pas pu enregistrer cette modification", NotificationManager.Type.Error);
                 panel.Refresh();
@@ -332,7 +392,7 @@ namespace PointShop.Points
                 string inputText = panel.inputText.Replace(",", ".");
                 if (double.TryParse(inputText, out double price))
                 {
-                    item.Price = price;
+                    item.Price = Math.Round(price, 2);
                     if(await item.Save())
                     {
                         player.Notify("PointShop", "Modification enregistrée", NotificationManager.Type.Success);
@@ -353,8 +413,7 @@ namespace PointShop.Points
             panel.CloseButton();
 
             panel.Display();
-        }
-        
+        }   
         #endregion
 
         /// <summary>
@@ -366,7 +425,6 @@ namespace PointShop.Points
             //Set the function to be called when a player clicks on the “create new model” button
             SetName(player);
         }
-
         /// <summary>
         /// Displays all properties of the pattern specified as parameter.
         /// The user can select one of the properties to make modifications.

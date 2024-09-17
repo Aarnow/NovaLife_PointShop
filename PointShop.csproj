@@ -59,6 +59,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Entities\PointShop_Item.cs" />
+    <Compile Include="Entities\PointShop_Logs.cs" />
     <Compile Include="PointShop.cs" />
     <Compile Include="Points\Shop.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

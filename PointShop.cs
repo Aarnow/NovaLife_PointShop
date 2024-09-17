@@ -17,6 +17,7 @@ namespace PointShop
         {
             base.OnPluginInit();
 
+            Orm.RegisterTable<PointShop_Logs>();
             Orm.RegisterTable<PointShop_Item>();
 
             Orm.RegisterTable<Shop>();
