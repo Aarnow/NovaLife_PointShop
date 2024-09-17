@@ -110,9 +110,9 @@ namespace PointShop.Points
                 {
                     var permissions = await PermissionUtils.GetPlayerPermission(player);
                     if (player.biz.OwnerId == player.character.Id || (permissions.hasRemoveMoneyPermission && permissions.hasAddMoneyPermission)) PointShopLogsPanel(player);
-                    else player.Notify("DAB", "Vous ne disposez pas des droits sur le compte bancaire d'entreprise", Life.NotificationManager.Type.Warning);
+                    else player.Notify("PointShop", "Vous ne disposez pas des droits sur le compte bancaire d'entreprise", Life.NotificationManager.Type.Warning);
                 }
-                else player.Notify("DAB", "Vous devez être propriétaire ou avoir les droits sur le compte en banque de votre société", Life.NotificationManager.Type.Warning);
+                else player.Notify("PointShop", "Vous devez être propriétaire ou avoir les droits sur le compte en banque de votre société", Life.NotificationManager.Type.Warning);
             });
             if(player.IsAdmin && player.serviceAdmin) panel.NextButton("Admin", () => PointShopAdminPanel(player));
             panel.CloseButton();
