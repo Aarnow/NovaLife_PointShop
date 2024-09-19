@@ -310,7 +310,8 @@ namespace PointShop.Points
                         }
                         else
                         {
-                            player.Notify("Achat", $"Vous n'avez pas suffisament d'espace dans votre inventaire", NotificationManager.Type.Warning);
+                            var currentItem = ItemUtils.GetItemById(item.ItemId);
+                            player.Notify("Achat", $"Vous n'avez pas suffisament de {currentItem.itemName} dans votre inventaire", NotificationManager.Type.Warning);
                             return false;
                         }
                         
@@ -524,7 +525,7 @@ namespace PointShop.Points
                 panel.AddTabLine($"{mk.Color($"{biz.BizName}", isAllowed ? mk.Colors.Success : mk.Colors.Error)}", _ => {
                     if(isAllowed) LBizAllowed.Remove(biz.Id);
                     else LBizAllowed.Add(biz.Id);
-                    SetBizAllowed(player, true);
+                    SetBizAllowed(player, isEditing);
                 });
             }
 
