@@ -227,7 +227,7 @@ namespace PointShop.Points
                         double total = quantity * item.Price;
                         if (player.character.Money >= total)
                         {
-                            if (player.setup.inventory.AddItem(item.ItemId, quantity, null))
+                            if (InventoryUtils.AddItem(player, item.ItemId, quantity))
                             {
                                 player.AddMoney(-total, $"PointShop - {PatternName}");
                                 var currentItem = ItemUtils.GetItemById(item.ItemId);
