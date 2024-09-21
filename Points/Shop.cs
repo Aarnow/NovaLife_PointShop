@@ -41,6 +41,7 @@ namespace PointShop.Points
         /// <param name="patternId">The identifier of the pattern in the database.</param>
         public async Task SetProperties(int patternId)
         {
+            Console.WriteLine(patternId);
             var result = await Query(patternId);
 
             Id = patternId;
@@ -534,13 +535,20 @@ namespace PointShop.Points
             {
                 panel.NextButton("Sauvegarder", async () =>
                 {
-                    BizAllowed = ListConverter.WriteJson(LBizAllowed);
+                    Shop newShop = new Shop();
+
+                    newShop.TypeName = nameof(Shop);
+                    newShop.PatternName = PatternName;
+                    newShop.BizAllowed = ListConverter.WriteJson(LBizAllowed);
+                    newShop.LItems = new List<int>();
+                    newShop.Items = ListConverter.WriteJson(LItems);
+
                     //function to call for the following property
                     // If you want to generate your point
-                    if (await Save())
+                    if (await newShop.Save())
                     {
                         player.Notify("PointShop", "Modifications enregistrées", NotificationManager.Type.Success);
-                        ConfirmGeneratePoint(player, this);
+                        ConfirmGeneratePoint(player, newShop);
                     }
                     else
                     {
