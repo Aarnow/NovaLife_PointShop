@@ -41,7 +41,6 @@ namespace PointShop.Points
         /// <param name="patternId">The identifier of the pattern in the database.</param>
         public async Task SetProperties(int patternId)
         {
-            Console.WriteLine(patternId);
             var result = await Query(patternId);
 
             Id = patternId;
