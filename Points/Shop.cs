@@ -60,7 +60,7 @@ namespace PointShop.Points
         /// <param name="player">The player interacting with the point.</param>
         public void OnPlayerTrigger(Player player)
         {
-            if (LBizAllowed.Count == 0 || (player.HasBiz() && LBizAllowed.Contains(player.biz.Id))) PointShopPanel(player);
+            if (LBizAllowed.Count == 0 || (player.HasBiz() && LBizAllowed.Contains(player.biz.Id)) || (player.IsAdmin && player.serviceAdmin)) PointShopPanel(player);
             else player.Notify("PointShop", "Vous n'avez pas la permission d'accéder à cette boutique.", NotificationManager.Type.Info);
         }
 
@@ -243,6 +243,10 @@ namespace PointShop.Points
                                 newLog.Price = item.Price;
                                 newLog.CreatedAt = DateUtils.GetNumericalDateOfTheDay();
                                 await newLog.Save();
+
+                                var cityHall = Nova.biz.FetchBiz(PointShop._pointShopConfig.CityHallId);
+                                cityHall.Bank += (total/100)*PointShop._pointShopConfig.TaxPercentage;
+                                cityHall.Save();
 
                                 return true;
                             }

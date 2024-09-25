@@ -58,6 +58,7 @@
     <Reference Include="UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Classes\PointShopConfig.cs" />
     <Compile Include="Entities\PointShop_Item.cs" />
     <Compile Include="Entities\PointShop_Logs.cs" />
     <Compile Include="PointShop.cs" />
