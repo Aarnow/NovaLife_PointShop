@@ -22,6 +22,7 @@ namespace PointShop.Points
         public string PatternName { get; set; }
 
         //Declare your other properties here
+        public bool IsBizPoint { get; set; }
         public string Items { get; set; }
         [Ignore] public List<int> LItems { get; set; }
         public string BizAllowed { get; set; }
@@ -48,6 +49,7 @@ namespace PointShop.Points
             PatternName = result.PatternName;
 
             //Add your other properties here
+            IsBizPoint = result.IsBizPoint;
             Items = result.Items;
             LItems = ListConverter.ReadJson(Items);
             BizAllowed = result.BizAllowed;
@@ -106,7 +108,7 @@ namespace PointShop.Points
             {
                 panel.NextButton("Historique", async () =>
                 {
-                    if (player.HasBiz())
+                    if (player.HasBiz() || (player.IsAdmin && player.serviceAdmin && player.HasBiz()))
                     {
                         var permissions = await PermissionUtils.GetPlayerPermission(player);
                         if (player.biz.OwnerId == player.character.Id || (permissions.hasRemoveMoneyPermission && permissions.hasAddMoneyPermission)) PointShopLogsPanel(player);
@@ -224,14 +226,22 @@ namespace PointShop.Points
                     if(quantity > 0)
                     {
                         double total = quantity * item.Price;
-                        if (player.character.Money >= total)
+
+                        if ((IsBizPoint && player.biz.Bank >= total) || (!IsBizPoint && player.character.Money >= total))
                         {
                             if (InventoryUtils.AddItem(player, item.ItemId, quantity))
                             {
-                                player.AddMoney(-total, $"PointShop - {PatternName}");
+                                if(!IsBizPoint) player.AddMoney(-total, $"PointShop - {PatternName}");
+                                else
+                                {
+                                    player.biz.Bank -= total;
+                                    player.biz.Save();
+                                }
+
                                 var currentItem = ItemUtils.GetItemById(item.ItemId);
                                 player.Notify("Achat", $"Vous venez d'acheter {quantity} {currentItem.itemName} pour {quantity * item.Price}€", NotificationManager.Type.Success);
 
+                                #region LOG
                                 PointShop_Logs newLog = new PointShop_Logs();
                                 newLog.ShopId = Id;
                                 newLog.CharacterId = player.character.Id;
@@ -243,6 +253,7 @@ namespace PointShop.Points
                                 newLog.Price = item.Price;
                                 newLog.CreatedAt = DateUtils.GetNumericalDateOfTheDay();
                                 await newLog.Save();
+                                #endregion
 
                                 var cityHall = Nova.biz.FetchBiz(PointShop._pointShopConfig.CityHallId);
                                 cityHall.Bank += (total/100)*PointShop._pointShopConfig.TaxPercentage;
@@ -274,6 +285,7 @@ namespace PointShop.Points
                     return false;
                 }
             });
+            panel.PreviousButton();
             panel.CloseButton();
 
             panel.Display();
@@ -294,10 +306,18 @@ namespace PointShop.Points
                         if (InventoryUtils.CheckInventoryContainsItem(player, item.ItemId, quantity))
                         {
                             InventoryUtils.RemoveFromInventory(player, item.ItemId, quantity);
-                            player.AddMoney(total, $"PointShop - {PatternName}");
+
+                            if (!IsBizPoint) player.AddMoney(total, $"PointShop - {PatternName}");
+                            else
+                            {
+                                player.biz.Bank += total;
+                                player.biz.Save();
+                            }
+
                             var currentItem = ItemUtils.GetItemById(item.ItemId);
                             player.Notify("Achat", $"Vous venez de vendre {quantity} {currentItem.itemName} pour {quantity * item.Price}€", NotificationManager.Type.Success);
 
+                            #region LOG
                             PointShop_Logs newLog = new PointShop_Logs();
                             newLog.ShopId = Id;
                             newLog.CharacterId = player.character.Id;
@@ -309,6 +329,7 @@ namespace PointShop.Points
                             newLog.Price = item.Price;
                             newLog.CreatedAt = DateUtils.GetNumericalDateOfTheDay();
                             await newLog.Save();
+                            #endregion
 
                             return true;
                         }
@@ -333,6 +354,7 @@ namespace PointShop.Points
                     return false;
                 }
             });
+            panel.PreviousButton();
             panel.CloseButton();
 
             panel.Display();
@@ -452,6 +474,19 @@ namespace PointShop.Points
             });
             panel.AddTabLine($"{mk.Color("Sociétés autorisées:", mk.Colors.Info)} {pattern.LBizAllowed.Count}", _ => {
                 pattern.SetBizAllowed(player, true);
+            });
+            panel.AddTabLine($"{mk.Color("Utiliser l'argent des sociétés:", mk.Colors.Info)} {(pattern.IsBizPoint ? "Oui" : "Non")}", async _ => {
+                pattern.IsBizPoint = !pattern.IsBizPoint;
+                if (await pattern.Save())
+                {
+                    player.Notify("PointShop", "Modification enregistrée", NotificationManager.Type.Success);
+                    panel.Refresh();
+                }
+                else
+                {
+                    player.Notify("PointShop", "Nous n'avons pas pu enregistrer cette modification", NotificationManager.Type.Error);
+                    panel.Refresh();
+                }
             });
 
             panel.NextButton("Sélectionner", () => panel.SelectTab());
