@@ -81,7 +81,7 @@ namespace PointShop
 
         public void InsertMenu()
         {
-            _menu.AddAdminTabLine(PluginInformations, 5, "PointShop", (ui) =>
+            _menu.AddAdminPluginTabLine(PluginInformations, 5, "PointShop", (ui) =>
             {
                 Player player = PanelHelper.ReturnPlayerFromPanel(ui);
                 PointShopPanel(player);
@@ -101,7 +101,7 @@ namespace PointShop
             });
 
             panel.NextButton("Sélectionner", () => panel.SelectTab());
-            panel.AddButton("Retour", _ => AAMenu.AAMenu.menu.AdminPanel(player, AAMenu.AAMenu.menu.AdminTabLines));
+            panel.AddButton("Retour", _ => AAMenu.AAMenu.menu.AdminPluginPanel(player, AAMenu.AAMenu.menu.AdminPluginTabLines));
             panel.CloseButton();
 
             //Affichage
