@@ -108,7 +108,7 @@ namespace PointShop.Points
             {
                 panel.NextButton("Historique", async () =>
                 {
-                    if (player.HasBiz() || (player.IsAdmin && player.serviceAdmin && player.HasBiz()))
+                    if (player.HasBiz() || (player.IsAdmin && player.serviceAdmin))
                     {
                         var permissions = await PermissionUtils.GetPlayerPermission(player);
                         if (player.biz.OwnerId == player.character.Id || (permissions.hasRemoveMoneyPermission && permissions.hasAddMoneyPermission)) PointShopLogsPanel(player);
