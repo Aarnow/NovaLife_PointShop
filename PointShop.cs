@@ -21,7 +21,7 @@ namespace PointShop
 
         public PointShop(IGameAPI api) : base(api)
         {
-            PluginInformations = new PluginInformations(AssemblyHelper.GetName(), "1.1.0", "Aarnow");
+            PluginInformations = new PluginInformations(AssemblyHelper.GetName(), "1.1.1", "Aarnow");
         }
 
         public override void OnPluginInit()
